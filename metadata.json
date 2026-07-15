@@ -1,0 +1,6 @@
+{
+  "name": "Bill Folder",
+  "description": "Snap it. File it. Find it later. An elegant organic paper style offline-first bill organizer with local OCR and backup.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
