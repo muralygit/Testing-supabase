@@ -454,13 +454,13 @@ class BillViewModel(
 
         viewModelScope.launch {
             _syncStatus.value = "Syncing with cloud..."
-            val success = withContext(Dispatchers.IO) {
+            val errorMessage = withContext(Dispatchers.IO) {
                 try {
                     val localBills = allBills.value
 
                     // 1. Upload local bill metadata + photo to Supabase
                     for (bill in localBills) {
-                        uploadSingleBill(bill)
+                        uploadSingleBill(bill) // throws now — no longer swallowed
                     }
 
                     // 2. Pull tombstones first, and delete any matching local bills
@@ -517,37 +517,33 @@ class BillViewModel(
                         repository.insertBill(remoteBill)
                         restoredCount++
                     }
-                    true
+                    null // no error
                 } catch (e: Exception) {
                     e.printStackTrace()
-                    false
+                    e.message ?: e.toString()
                 }
             }
 
             _syncStatus.value = "Idle"
-            if (success) {
+            if (errorMessage == null) {
                 _eventFlow.emit("✅ Cloud Sync complete!")
             } else {
-                _eventFlow.emit("❌ Sync failed. Please check network connection.")
+                _eventFlow.emit("❌ Sync failed: $errorMessage")
             }
         }
     }
 
     private suspend fun uploadSingleBill(bill: Bill) {
-        try {
-            cloudSync.upsertBillRow(bill)
+        cloudSync.upsertBillRow(bill)
 
-            if (bill.photoPath.isNotEmpty()) {
-                val file = File(bill.photoPath)
-                if (file.exists()) {
-                    val path = cloudSync.uploadPhoto(bill.id, file.readBytes())
-                    if (path != null) {
-                        cloudSync.setImagePath(bill.id, path)
-                    }
+        if (bill.photoPath.isNotEmpty()) {
+            val file = File(bill.photoPath)
+            if (file.exists()) {
+                val path = cloudSync.uploadPhoto(bill.id, file.readBytes())
+                if (path != null) {
+                    cloudSync.setImagePath(bill.id, path)
                 }
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
         }
     }
 }
