@@ -5,10 +5,12 @@ import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
-import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Locale
 import kotlin.time.Duration.Companion.minutes
@@ -40,7 +42,7 @@ class CloudSyncRepository {
     /** Insert-or-update a bill's metadata row, keyed by client_id = Bill.id. */
     suspend fun upsertBillRow(bill: Bill) = withContext(Dispatchers.IO) {
         val title = bill.refNumber.ifBlank { "${bill.category} ${bill.date}".trim() }
-        val row = JSONObject().apply {
+        val row: JsonObject = buildJsonObject {
             put("client_id", bill.id)
             put("title", title)
             put("category", bill.category)
@@ -50,7 +52,7 @@ class CloudSyncRepository {
             put("ocr_text", bill.ocrText)
         }
         client.postgrest[SupabaseClientProvider.DOCUMENTS_TABLE]
-            .upsert(row.toString()) {
+            .upsert(row) {
                 onConflict = "client_id"
             }
     }
@@ -70,8 +72,11 @@ class CloudSyncRepository {
 
     /** Set image_path on an existing document row once the photo upload succeeds. */
     suspend fun setImagePath(clientId: String, imagePath: String) = withContext(Dispatchers.IO) {
+        val row: JsonObject = buildJsonObject {
+            put("image_path", imagePath)
+        }
         client.postgrest[SupabaseClientProvider.DOCUMENTS_TABLE]
-            .update(JSONObject().put("image_path", imagePath).toString()) {
+            .update(row) {
                 filter { eq("client_id", clientId) }
             }
     }
@@ -144,11 +149,11 @@ class CloudSyncRepository {
             client.postgrest[SupabaseClientProvider.DOCUMENTS_TABLE].delete {
                 filter { eq("client_id", clientId) }
             }
-            val tombstone = JSONObject().apply {
+            val tombstone: JsonObject = buildJsonObject {
                 put("client_id", clientId)
                 put("deleted_at", timestampFormat.format(java.util.Date()))
             }
-            client.postgrest[SupabaseClientProvider.TOMBSTONES_TABLE].insert(tombstone.toString())
+            client.postgrest[SupabaseClientProvider.TOMBSTONES_TABLE].insert(tombstone)
         } catch (e: Exception) {
             e.printStackTrace()
         }
