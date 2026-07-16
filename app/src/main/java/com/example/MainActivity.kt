@@ -1080,7 +1080,7 @@ fun AddBillDialog(
     var selectedCategory by remember { mutableStateOf("electricity") }
     var refNumber by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
-    var selectedDate by remember { mutableStateOf(SimpleDateFormat("yyyy-MM-DD", Locale.US).format(Date())) }
+    var selectedDate by remember { mutableStateOf(SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())) }
 
     // OCR scanning results from Viewmodel
     val ocrLoading by viewModel.ocrLoading.collectAsStateWithLifecycle()
