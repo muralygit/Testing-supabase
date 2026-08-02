@@ -173,14 +173,18 @@ class CloudSyncRepository {
         val error: String? = null
     )
 
+    /** Result of trying to auto-discover bucket names. [error] is set when
+     *  [names] came back empty due to a failure (bad response, exception,
+     *  etc.) so callers/UI can show *why* discovery didn't work instead of
+     *  silently falling back. */
+    data class BucketDiscoveryResult(val names: List<String>, val error: String? = null)
+
     /** Fetches every bucket name in this project directly via Supabase's
      *  Storage REST API (GET /storage/v1/bucket), since Storage.listBuckets()
      *  isn't available in the pinned supabase-kt version (3.1.4) — it was
      *  added in a later release. This bypasses that limitation without
-     *  needing a dependency bump. Returns an empty list (rather than
-     *  throwing) if the request fails, so callers can fall back to a known
-     *  bucket list instead of showing nothing. */
-    suspend fun fetchBucketNames(): List<String> = withContext(Dispatchers.IO) {
+     *  needing a dependency bump. */
+    suspend fun fetchBucketNames(): BucketDiscoveryResult = withContext(Dispatchers.IO) {
         try {
             val url = "${BuildConfig.SUPABASE_URL}/storage/v1/bucket"
             val request = Request.Builder()
@@ -189,35 +193,55 @@ class CloudSyncRepository {
                 .addHeader("Authorization", "Bearer ${BuildConfig.SUPABASE_ANON_KEY}")
                 .build()
             okHttp.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@withContext emptyList()
-                val body = response.body?.string() ?: return@withContext emptyList()
+                if (!response.isSuccessful) {
+                    val bodyText = response.body?.string().orEmpty()
+                    return@withContext BucketDiscoveryResult(
+                        emptyList(),
+                        error = "HTTP ${response.code}: ${bodyText.take(200)}"
+                    )
+                }
+                val body = response.body?.string()
+                    ?: return@withContext BucketDiscoveryResult(emptyList(), error = "Empty response body")
                 val array = JSONArray(body)
-                (0 until array.length()).mapNotNull { i ->
+                val names = (0 until array.length()).mapNotNull { i ->
                     array.getJSONObject(i).optString("name").takeIf { it.isNotBlank() }
                 }
+                BucketDiscoveryResult(names)
             }
         } catch (e: Exception) {
             e.printStackTrace()
-            emptyList()
+            BucketDiscoveryResult(emptyList(), error = e.message ?: e.toString())
         }
     }
 
     /** File count + total bytes for every Storage bucket in this project.
      *  Bucket names are discovered automatically via [fetchBucketNames] —
      *  any bucket you add later shows up here with no code changes needed.
-     *  Falls back to the known `documents`/`uploads` buckets only if that
-     *  discovery call fails or returns nothing (e.g. the anon key isn't
-     *  allowed to list buckets even though it can read/write inside them).
+     *  Falls back to the known `documents`/`uploads` buckets if that
+     *  discovery call fails, and surfaces *why* it fell back as its own
+     *  entry in the results so it's visible in the UI, not just logcat.
      *
      *  Note: this only reflects Storage bucket usage — it doesn't include
      *  Postgres/database row storage, since that requires the private
      *  Management API and isn't safe to call from a mobile app. */
     suspend fun getAllBucketsUsage(): List<BucketUsage> = withContext(Dispatchers.IO) {
-        val discovered = fetchBucketNames()
-        val bucketNames = discovered.ifEmpty {
+        val discovery = fetchBucketNames()
+        val results = mutableListOf<BucketUsage>()
+
+        val bucketNames = if (discovery.names.isNotEmpty()) {
+            discovery.names
+        } else {
+            results.add(
+                BucketUsage(
+                    bucketName = "(auto-discovery)",
+                    fileCount = 0,
+                    totalBytes = 0L,
+                    error = "Falling back to known bucket list — ${discovery.error ?: "no buckets returned"}"
+                )
+            )
             listOf(SupabaseClientProvider.DOCUMENTS_BUCKET, SupabaseClientProvider.UPLOADS_BUCKET)
         }
-        val results = mutableListOf<BucketUsage>()
+
         for (bucketName in bucketNames) {
             val usage = try {
                 val files = client.storage.from(bucketName).list()
