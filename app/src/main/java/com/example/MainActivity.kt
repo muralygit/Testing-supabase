@@ -35,8 +35,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -1850,6 +1852,7 @@ fun CloudSyncDialog(
 fun AboutDialog(
     onDismiss: () -> Unit
 ) {
+    val clipboardManager = LocalClipboardManager.current
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             modifier = Modifier
@@ -1890,164 +1893,233 @@ fun AboutDialog(
 
                 Text(
                     text = "💡 Adding a bill",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    letterSpacing = 0.3.sp
                 )
                 Text(
                     text = "Tap the green '+' button → choose a category → tap 'Take Photo' (opens camera) or 'Choose from Gallery'. Fill in the date and a reference/ID number if you have one, add notes, then Save.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.secondary
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    lineHeight = 21.sp
                 )
 
                 Text(
                     text = "🏷️ Custom Categories",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    letterSpacing = 0.3.sp
                 )
                 Text(
                     text = "Need more folders beyond the default 5? Tap the Cloud/Backup settings button on the top right, scroll to 'Custom Categories', enter a name, choose an emoji icon and color, and tap 'Add Custom Category'. It will instantly appear on your dashboard! You can also delete custom categories you no longer need.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.secondary
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    lineHeight = 21.sp
                 )
 
                 Text(
                     text = "⚡ Automatic text reading (OCR)",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    letterSpacing = 0.3.sp
                 )
                 Text(
                     text = "Right after you take or pick a photo, the app automatically scans it for any printed text — bill numbers, names, addresses — and shows you what it found. This happens entirely on your device; nothing is sent anywhere.\n\n" +
                             "Printed Latin/English characters work well. Handwriting is not supported.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.secondary
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    lineHeight = 21.sp
                 )
 
                 Text(
                     text = "🔒 Offline & Private",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    letterSpacing = 0.3.sp
                 )
                 Text(
                     text = "All your bills live only on this device unless you back them up or connect cloud sync. Uninstalling the app deletes everything that hasn't been backed up.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.secondary
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    lineHeight = 21.sp
                 )
 
                 Text(
                     text = "☁️ Running Cloud Sync on your own Supabase project",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    letterSpacing = 0.3.sp
                 )
                 Text(
                     text = "By default, Cloud Sync connects to the developer's Supabase project. If you'd rather run it on your own — for full control over your data — here's the full setup:",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.secondary
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    lineHeight = 21.sp
                 )
                 Text(
                     text = "1. Create a free project at supabase.com. From Project Settings → API, note down the Project URL and the \"anon public\" key (starts with eyJ...).\n\n" +
                             "2. Open the SQL Editor and run this once to create the two tables the app needs:",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.secondary
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    lineHeight = 21.sp
                 )
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                 ) {
-                    Text(
-                        text = """
-                            create table public.documents (
-                              client_id text primary key,
-                              title text not null default '',
-                              category text not null default 'other',
-                              date text not null default '',
-                              ref_number text not null default '',
-                              notes text not null default '',
-                              ocr_text text not null default '',
-                              image_path text,
-                              created_at timestamptz not null default now()
-                            );
-                            alter table public.documents enable row level security;
-                            create policy "Anon insert documents" on public.documents
-                              for insert to anon with check (true);
-                            create policy "Anon select documents" on public.documents
-                              for select to anon using (true);
-                            create policy "Anon update documents" on public.documents
-                              for update to anon using (true);
-                            create policy "Anon delete documents" on public.documents
-                              for delete to anon using (true);
+                    val tablesSql = """
+                        create table public.documents (
+                          client_id text primary key,
+                          title text not null default '',
+                          category text not null default 'other',
+                          date text not null default '',
+                          ref_number text not null default '',
+                          notes text not null default '',
+                          ocr_text text not null default '',
+                          image_path text,
+                          created_at timestamptz not null default now()
+                        );
+                        alter table public.documents enable row level security;
+                        create policy "Anon insert documents" on public.documents
+                          for insert to anon with check (true);
+                        create policy "Anon select documents" on public.documents
+                          for select to anon using (true);
+                        create policy "Anon update documents" on public.documents
+                          for update to anon using (true);
+                        create policy "Anon delete documents" on public.documents
+                          for delete to anon using (true);
 
-                            create table public.documents_tombstones (
-                              client_id text primary key,
-                              deleted_at timestamptz not null default now()
-                            );
-                            alter table public.documents_tombstones enable row level security;
-                            create policy "Anon insert tombstones" on public.documents_tombstones
-                              for insert to anon with check (true);
-                            create policy "Anon select tombstones" on public.documents_tombstones
-                              for select to anon using (true);
-                            create policy "Anon delete tombstones" on public.documents_tombstones
-                              for delete to anon using (true);
-                        """.trimIndent(),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontFamily = FontFamily.Monospace,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(10.dp)
-                    )
+                        create table public.documents_tombstones (
+                          client_id text primary key,
+                          deleted_at timestamptz not null default now()
+                        );
+                        alter table public.documents_tombstones enable row level security;
+                        create policy "Anon insert tombstones" on public.documents_tombstones
+                          for insert to anon with check (true);
+                        create policy "Anon select tombstones" on public.documents_tombstones
+                          for select to anon using (true);
+                        create policy "Anon delete tombstones" on public.documents_tombstones
+                          for delete to anon using (true);
+                    """.trimIndent()
+                    var tablesCopied by remember { mutableStateOf(false) }
+                    Column {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(onClick = {
+                                clipboardManager.setText(AnnotatedString(tablesSql))
+                                tablesCopied = true
+                            }) {
+                                Icon(
+                                    imageVector = if (tablesCopied) Icons.Default.Check else Icons.Default.ContentCopy,
+                                    contentDescription = "Copy SQL",
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = if (tablesCopied) "Copied!" else "Copy",
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                        }
+                        Text(
+                            text = tablesSql,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
+                        )
+                    }
                 }
                 Text(
                     text = "3. Go to Storage → New bucket, name it exactly \"documents\", and keep it Private — photos are shared via short-lived signed links, not public URLs. Then run this in the SQL Editor so the app can upload, view, and delete photos:",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.secondary
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    lineHeight = 21.sp
                 )
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                 ) {
-                    Text(
-                        text = """
-                            create policy "Anon upload to documents bucket" on storage.objects
-                              for insert to anon with check (bucket_id = 'documents');
-                            create policy "Anon read documents bucket" on storage.objects
-                              for select to anon using (bucket_id = 'documents');
-                            create policy "Anon delete from documents bucket" on storage.objects
-                              for delete to anon using (bucket_id = 'documents');
+                    val storageSql = """
+                        create policy "Anon upload to documents bucket" on storage.objects
+                          for insert to anon with check (bucket_id = 'documents');
+                        create policy "Anon read documents bucket" on storage.objects
+                          for select to anon using (bucket_id = 'documents');
+                        create policy "Anon delete from documents bucket" on storage.objects
+                          for delete to anon using (bucket_id = 'documents');
 
-                            -- Optional: lets "Check Storage Usage" auto-discover
-                            -- every bucket instead of only known ones
-                            create policy "Anon list buckets" on storage.buckets
-                              for select to anon using (true);
-                        """.trimIndent(),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontFamily = FontFamily.Monospace,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(10.dp)
-                    )
+                        -- Optional: lets "Check Storage Usage" auto-discover
+                        -- every bucket instead of only known ones
+                        create policy "Anon list buckets" on storage.buckets
+                          for select to anon using (true);
+                    """.trimIndent()
+                    var storageCopied by remember { mutableStateOf(false) }
+                    Column {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(onClick = {
+                                clipboardManager.setText(AnnotatedString(storageSql))
+                                storageCopied = true
+                            }) {
+                                Icon(
+                                    imageVector = if (storageCopied) Icons.Default.Check else Icons.Default.ContentCopy,
+                                    contentDescription = "Copy SQL",
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = if (storageCopied) "Copied!" else "Copy",
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                        }
+                        Text(
+                            text = storageSql,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
+                        )
+                    }
                 }
                 Text(
                     text = "4. If you're installing a pre-built APK, the URL and key are already baked in — nothing to paste here. Building from source instead? Add SUPABASE_URL and SUPABASE_ANON_KEY as GitHub Actions repository secrets so the CI build can generate the .env file automatically.\n\n" +
                             "5. Open Cloud Sync in settings, switch Enabled on, and tap \"Sync Now\" once to confirm it connects.\n\n" +
                             "Troubleshooting: an \"unable to resolve host\" error usually means your project auto-paused from a week of inactivity — open it in the Supabase dashboard and tap Resume project.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.secondary
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    lineHeight = 21.sp
                 )
 
                 Text(
                     text = "🖼️ Smart Image Compression",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    letterSpacing = 0.3.sp
                 )
                 Text(
                     text = "No manual button is needed! To keep your device storage clean and fast, the app automatically compresses and downscales images immediately upon capture or selection from the gallery. Large, heavy photos are resized to a maximum of 1600px and saved as optimized JPEGs (typically 100-200 KB) while perfectly preserving text legibility.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.secondary
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    lineHeight = 21.sp
                 )
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline)
@@ -2058,15 +2130,17 @@ fun AboutDialog(
                 ) {
                     Text(
                         text = "Developed by Muraly",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.primary,
+                        letterSpacing = 0.3.sp
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "📧 Contact: 7012451340",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.secondary
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        lineHeight = 21.sp
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
