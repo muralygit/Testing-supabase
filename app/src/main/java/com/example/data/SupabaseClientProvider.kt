@@ -27,6 +27,10 @@ object SupabaseClientProvider {
     }
 
     const val DOCUMENTS_BUCKET = "documents"
+    // Seen in the Supabase dashboard alongside "documents" — included here so
+    // the storage-usage check covers it too. If you rename or add buckets,
+    // update this (and the list in CloudSyncRepository.getAllBucketsUsage).
+    const val UPLOADS_BUCKET = "uploads"
     const val DOCUMENTS_TABLE = "documents"
     const val TOMBSTONES_TABLE = "documents_tombstones"
 }
