@@ -1,5 +1,6 @@
 package com.example.data
 
+import com.example.BuildConfig
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.storage.storage
@@ -172,23 +173,50 @@ class CloudSyncRepository {
         val error: String? = null
     )
 
-    /** File count + total bytes for every known Storage bucket in this
-     *  project, not just `documents`.
+    /** Fetches every bucket name in this project directly via Supabase's
+     *  Storage REST API (GET /storage/v1/bucket), since Storage.listBuckets()
+     *  isn't available in the pinned supabase-kt version (3.1.4) — it was
+     *  added in a later release. This bypasses that limitation without
+     *  needing a dependency bump. Returns an empty list (rather than
+     *  throwing) if the request fails, so callers can fall back to a known
+     *  bucket list instead of showing nothing. */
+    suspend fun fetchBucketNames(): List<String> = withContext(Dispatchers.IO) {
+        try {
+            val url = "${BuildConfig.SUPABASE_URL}/storage/v1/bucket"
+            val request = Request.Builder()
+                .url(url)
+                .addHeader("apikey", BuildConfig.SUPABASE_ANON_KEY)
+                .addHeader("Authorization", "Bearer ${BuildConfig.SUPABASE_ANON_KEY}")
+                .build()
+            okHttp.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@withContext emptyList()
+                val body = response.body?.string() ?: return@withContext emptyList()
+                val array = JSONArray(body)
+                (0 until array.length()).mapNotNull { i ->
+                    array.getJSONObject(i).optString("name").takeIf { it.isNotBlank() }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
+    /** File count + total bytes for every Storage bucket in this project.
+     *  Bucket names are discovered automatically via [fetchBucketNames] —
+     *  any bucket you add later shows up here with no code changes needed.
+     *  Falls back to the known `documents`/`uploads` buckets only if that
+     *  discovery call fails or returns nothing (e.g. the anon key isn't
+     *  allowed to list buckets even though it can read/write inside them).
      *
-     *  Note: Storage.listBuckets() would be the "automatic" way to discover
-     *  every bucket, but it isn't available in the supabase-kt version this
-     *  project is pinned to (3.1.4) — it was added in a later release. So
-     *  bucket names are listed explicitly here instead. Add any new bucket
-     *  name to SupabaseClientProvider and to the list below to include it.
-     *
-     *  Also note: this only reflects Storage bucket usage — it doesn't
-     *  include Postgres/database row storage, since that requires the
-     *  private Management API and isn't safe to call from a mobile app. */
+     *  Note: this only reflects Storage bucket usage — it doesn't include
+     *  Postgres/database row storage, since that requires the private
+     *  Management API and isn't safe to call from a mobile app. */
     suspend fun getAllBucketsUsage(): List<BucketUsage> = withContext(Dispatchers.IO) {
-        val bucketNames = listOf(
-            SupabaseClientProvider.DOCUMENTS_BUCKET,
-            SupabaseClientProvider.UPLOADS_BUCKET
-        )
+        val discovered = fetchBucketNames()
+        val bucketNames = discovered.ifEmpty {
+            listOf(SupabaseClientProvider.DOCUMENTS_BUCKET, SupabaseClientProvider.UPLOADS_BUCKET)
+        }
         val results = mutableListOf<BucketUsage>()
         for (bucketName in bucketNames) {
             val usage = try {
