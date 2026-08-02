@@ -1804,7 +1804,7 @@ fun CloudSyncDialog(
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
                             Text(
-                                text = "Storage Usage (documents bucket):",
+                                text = "Storage Usage (all buckets):",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
