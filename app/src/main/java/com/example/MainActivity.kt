@@ -1451,6 +1451,7 @@ fun CloudSyncDialog(
     val context = LocalContext.current
     val syncStatus by viewModel.syncStatus.collectAsStateWithLifecycle()
     val isConnected by viewModel.isCloudSyncEnabled.collectAsStateWithLifecycle()
+    val storageUsage by viewModel.storageUsage.collectAsStateWithLifecycle()
 
     // Backup file save launcher
     val exportLauncher = rememberLauncherForActivityResult(
@@ -1782,6 +1783,40 @@ fun CloudSyncDialog(
                     Icon(Icons.Default.Sync, contentDescription = "Sync Now")
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("Sync Now (Bidirectional)")
+                }
+
+                Button(
+                    onClick = { viewModel.checkStorageUsage() },
+                    enabled = isConnected,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
+                ) {
+                    Icon(Icons.Default.Info, contentDescription = "Check Storage Usage")
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Check Storage Usage")
+                }
+
+                if (storageUsage.isNotEmpty()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = "Storage Usage (documents bucket):",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = storageUsage,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
 
                 Card(
