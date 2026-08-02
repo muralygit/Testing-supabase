@@ -159,14 +159,17 @@ class CloudSyncRepository {
         }
     }
 
-    /** Total bytes currently stored in the `documents` bucket (used for a storage-usage check). */
-    suspend fun getStorageUsageBytes(): Long = withContext(Dispatchers.IO) {
+    /** File count + total bytes currently stored in the `documents` bucket
+     *  (used for a storage-usage check). Returning the count too makes it
+     *  possible to tell "bucket is genuinely empty" apart from "list()
+     *  returned files but their size metadata came back empty/null". */
+    suspend fun getStorageUsageInfo(): Pair<Int, Long> = withContext(Dispatchers.IO) {
         val files = client.storage.from(SupabaseClientProvider.DOCUMENTS_BUCKET).list()
         var totalBytes = 0L
         for (file in files) {
             totalBytes += file.metadata?.size?.toLong() ?: 0L
         }
-        totalBytes
+        Pair(files.size, totalBytes)
     }
 
     /** Clean up tombstones older than 90 days so the table doesn't grow forever. */
