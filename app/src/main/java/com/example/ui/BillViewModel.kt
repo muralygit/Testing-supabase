@@ -150,6 +150,33 @@ class BillViewModel(
     private val _syncStatus = MutableStateFlow("Idle")
     val syncStatus = _syncStatus.asStateFlow()
 
+    private val _storageUsage = MutableStateFlow("")
+    val storageUsage = _storageUsage.asStateFlow()
+
+    /** Sums up file sizes in the Supabase `documents` bucket and shows used/remaining
+     *  against the free-tier 1GB estimate. Only reflects bucket storage, not database
+     *  row storage or other buckets, since the client can't query overall project quota. */
+    fun checkStorageUsage() {
+        viewModelScope.launch {
+            _storageUsage.value = "Calculating..."
+            val result = withContext(Dispatchers.IO) {
+                try {
+                    val usedBytes = cloudSync.getStorageUsageBytes()
+                    val usedMB = usedBytes / (1024.0 * 1024.0)
+                    val freeTierLimitMB = 1024.0 // Supabase free tier: ~1GB. Update if you're on a paid plan.
+                    val percentUsed = (usedMB / freeTierLimitMB * 100.0).coerceAtMost(100.0)
+                    val remainingMB = (freeTierLimitMB - usedMB).coerceAtLeast(0.0)
+                    "Used: %.2f MB · Remaining: ~%.2f MB · %.1f%% of %d MB (free-tier estimate)"
+                        .format(usedMB, remainingMB, percentUsed, freeTierLimitMB.toInt())
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    "❌ Failed to check storage: ${e.message}"
+                }
+            }
+            _storageUsage.value = result
+        }
+    }
+
     private val _isCloudSyncEnabled = MutableStateFlow(false)
     val isCloudSyncEnabled = _isCloudSyncEnabled.asStateFlow()
 
