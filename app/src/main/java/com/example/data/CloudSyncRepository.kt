@@ -172,25 +172,39 @@ class CloudSyncRepository {
         val error: String? = null
     )
 
-    /** File count + total bytes for every Storage bucket in this project,
-     *  not just `documents`. Note: this only reflects Storage bucket usage —
-     *  it doesn't include Postgres/database row storage, since that requires
-     *  the private Management API and isn't safe to call from a mobile app. */
+    /** File count + total bytes for every known Storage bucket in this
+     *  project, not just `documents`.
+     *
+     *  Note: Storage.listBuckets() would be the "automatic" way to discover
+     *  every bucket, but it isn't available in the supabase-kt version this
+     *  project is pinned to (3.1.4) — it was added in a later release. So
+     *  bucket names are listed explicitly here instead. Add any new bucket
+     *  name to SupabaseClientProvider and to the list below to include it.
+     *
+     *  Also note: this only reflects Storage bucket usage — it doesn't
+     *  include Postgres/database row storage, since that requires the
+     *  private Management API and isn't safe to call from a mobile app. */
     suspend fun getAllBucketsUsage(): List<BucketUsage> = withContext(Dispatchers.IO) {
-        val buckets = client.storage.listBuckets()
-        buckets.map { bucket ->
-            try {
-                val files = client.storage.from(bucket.name).list()
+        val bucketNames = listOf(
+            SupabaseClientProvider.DOCUMENTS_BUCKET,
+            SupabaseClientProvider.UPLOADS_BUCKET
+        )
+        val results = mutableListOf<BucketUsage>()
+        for (bucketName in bucketNames) {
+            val usage = try {
+                val files = client.storage.from(bucketName).list()
                 var totalBytes = 0L
                 for (file in files) {
                     totalBytes += file.metadata?.get("size")?.jsonPrimitive?.longOrNull ?: 0L
                 }
-                BucketUsage(bucket.name, files.size, totalBytes)
+                BucketUsage(bucketName, files.size, totalBytes)
             } catch (e: Exception) {
                 e.printStackTrace()
-                BucketUsage(bucket.name, 0, 0L, error = e.message ?: e.toString())
+                BucketUsage(bucketName, 0, 0L, error = e.message ?: e.toString())
             }
+            results.add(usage)
         }
+        results
     }
 
     /** Clean up tombstones older than 90 days so the table doesn't grow forever. */
