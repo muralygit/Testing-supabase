@@ -161,13 +161,29 @@ class BillViewModel(
             _storageUsage.value = "Calculating..."
             val result = withContext(Dispatchers.IO) {
                 try {
-                    val (fileCount, usedBytes) = cloudSync.getStorageUsageInfo()
-                    val usedMB = usedBytes / (1024.0 * 1024.0)
+                    val bucketUsages = cloudSync.getAllBucketsUsage()
                     val freeTierLimitMB = 1024.0 // Supabase free tier: ~1GB. Update if you're on a paid plan.
-                    val percentUsed = (usedMB / freeTierLimitMB * 100.0).coerceAtMost(100.0)
-                    val remainingMB = (freeTierLimitMB - usedMB).coerceAtLeast(0.0)
-                    "Found $fileCount file(s) · Used: %.2f MB · Remaining: ~%.2f MB · %.1f%% of %d MB (free-tier estimate)"
-                        .format(usedMB, remainingMB, percentUsed, freeTierLimitMB.toInt())
+
+                    var totalBytes = 0L
+                    val lines = StringBuilder()
+                    for (usage in bucketUsages) {
+                        if (usage.error != null) {
+                            lines.append("• ${usage.bucketName}: ⚠️ ${usage.error}\n")
+                        } else {
+                            totalBytes += usage.totalBytes
+                            val usedMB = usage.totalBytes / (1024.0 * 1024.0)
+                            lines.append("• ${usage.bucketName}: %.2f MB (%d file%s)\n"
+                                .format(usedMB, usage.fileCount, if (usage.fileCount == 1) "" else "s"))
+                        }
+                    }
+
+                    val totalMB = totalBytes / (1024.0 * 1024.0)
+                    val percentUsed = (totalMB / freeTierLimitMB * 100.0).coerceAtMost(100.0)
+                    val remainingMB = (freeTierLimitMB - totalMB).coerceAtLeast(0.0)
+                    lines.append("\nTotal: %.2f MB · Remaining: ~%.2f MB · %.1f%% of %d MB (free-tier estimate)"
+                        .format(totalMB, remainingMB, percentUsed, freeTierLimitMB.toInt()))
+
+                    lines.toString().trim()
                 } catch (e: Exception) {
                     e.printStackTrace()
                     "❌ Failed to check storage: ${e.message}"
