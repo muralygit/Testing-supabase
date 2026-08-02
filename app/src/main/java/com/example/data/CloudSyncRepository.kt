@@ -161,24 +161,36 @@ class CloudSyncRepository {
         }
     }
 
-    /** File count + total bytes currently stored in the `documents` bucket
-     *  (used for a storage-usage check). Returning the count too makes it
-     *  possible to tell "bucket is genuinely empty" apart from "list()
-     *  returned files but their size metadata came back empty/null".
-     *
-     *  Note: FileObject.metadata is a raw JsonObject (basically a Map), so
-     *  `metadata?.size` looks like it reads a file size but actually calls
-     *  Map.size (the number of metadata keys) — that was the bug that made
-     *  this always report 0. The real byte size lives at metadata["size"]
-     *  and has to be read out explicitly as JSON. */
-    suspend fun getStorageUsageInfo(): Pair<Int, Long> = withContext(Dispatchers.IO) {
-        val files = client.storage.from(SupabaseClientProvider.DOCUMENTS_BUCKET).list()
-        var totalBytes = 0L
-        for (file in files) {
-            val sizeBytes = file.metadata?.get("size")?.jsonPrimitive?.longOrNull ?: 0L
-            totalBytes += sizeBytes
+    /** Usage info for one Storage bucket. [error] is set (and the other
+     *  fields left at zero) if listing that particular bucket failed —
+     *  e.g. an RLS policy blocking it — so one bad bucket doesn't stop the
+     *  others from reporting. */
+    data class BucketUsage(
+        val bucketName: String,
+        val fileCount: Int,
+        val totalBytes: Long,
+        val error: String? = null
+    )
+
+    /** File count + total bytes for every Storage bucket in this project,
+     *  not just `documents`. Note: this only reflects Storage bucket usage —
+     *  it doesn't include Postgres/database row storage, since that requires
+     *  the private Management API and isn't safe to call from a mobile app. */
+    suspend fun getAllBucketsUsage(): List<BucketUsage> = withContext(Dispatchers.IO) {
+        val buckets = client.storage.listBuckets()
+        buckets.map { bucket ->
+            try {
+                val files = client.storage.from(bucket.name).list()
+                var totalBytes = 0L
+                for (file in files) {
+                    totalBytes += file.metadata?.get("size")?.jsonPrimitive?.longOrNull ?: 0L
+                }
+                BucketUsage(bucket.name, files.size, totalBytes)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                BucketUsage(bucket.name, 0, 0L, error = e.message ?: e.toString())
+            }
         }
-        Pair(files.size, totalBytes)
     }
 
     /** Clean up tombstones older than 90 days so the table doesn't grow forever. */
