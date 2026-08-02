@@ -159,6 +159,12 @@ class CloudSyncRepository {
         }
     }
 
+    /** Total bytes currently stored in the `documents` bucket (used for a storage-usage check). */
+    suspend fun getStorageUsageBytes(): Long = withContext(Dispatchers.IO) {
+        val files = client.storage.from(SupabaseClientProvider.DOCUMENTS_BUCKET).list()
+        files.sumOf { it.metadata?.size ?: 0L }
+    }
+
     /** Clean up tombstones older than 90 days so the table doesn't grow forever. */
     suspend fun purgeOldTombstones() = withContext(Dispatchers.IO) {
         try {
