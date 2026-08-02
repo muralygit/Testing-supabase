@@ -161,12 +161,12 @@ class BillViewModel(
             _storageUsage.value = "Calculating..."
             val result = withContext(Dispatchers.IO) {
                 try {
-                    val usedBytes = cloudSync.getStorageUsageBytes()
+                    val (fileCount, usedBytes) = cloudSync.getStorageUsageInfo()
                     val usedMB = usedBytes / (1024.0 * 1024.0)
                     val freeTierLimitMB = 1024.0 // Supabase free tier: ~1GB. Update if you're on a paid plan.
                     val percentUsed = (usedMB / freeTierLimitMB * 100.0).coerceAtMost(100.0)
                     val remainingMB = (freeTierLimitMB - usedMB).coerceAtLeast(0.0)
-                    "Used: %.2f MB · Remaining: ~%.2f MB · %.1f%% of %d MB (free-tier estimate)"
+                    "Found $fileCount file(s) · Used: %.2f MB · Remaining: ~%.2f MB · %.1f%% of %d MB (free-tier estimate)"
                         .format(usedMB, remainingMB, percentUsed, freeTierLimitMB.toInt())
                 } catch (e: Exception) {
                     e.printStackTrace()
