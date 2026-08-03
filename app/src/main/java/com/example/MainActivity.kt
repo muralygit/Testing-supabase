@@ -164,6 +164,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        SupabaseKeepAliveWorker.schedule(applicationContext)
+
         val database = AppDatabase.getDatabase(applicationContext)
         val repository = BillRepository(database.billDao())
         
